@@ -1,0 +1,153 @@
+/* StockXpert - simple dark theme */
+:root {
+  --bg1: #1a2a6c;
+  --bg2: #b21f1f;
+  --bg3: #fdbb2d;
+  --card: rgba(255, 255, 255, 0.15);
+  --card2: rgba(255, 255, 255, 0.95);
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.7);
+  --danger: #e74c3c;
+  --danger2: #c0392b;
+  --ok: #2ecc71;
+  --ok2: #27ae60;
+  --warn: #f39c12;
+  --warn2: #e67e22;
+  --info: #4a90e2;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: linear-gradient(to bottom right, var(--bg1), var(--bg2), var(--bg3));
+  color: var(--text);
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 18px;
+  backdrop-filter: blur(6px);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+label {
+  display: block;
+  color: white;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+input, select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+}
+
+input {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+select {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(to bottom, var(--info), #357abd);
+}
+
+button.secondary {
+  background: linear-gradient(to bottom, #95a5a6, #7f8c8d);
+}
+
+button.danger {
+  background: linear-gradient(to bottom, var(--danger), var(--danger2));
+}
+
+button.success {
+  background: linear-gradient(to bottom, var(--ok), var(--ok2));
+}
+
+button.warn {
+  background: linear-gradient(to bottom, var(--warn), var(--warn2));
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.message {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.15);
+  font-weight: 700;
+}
+
+.table-wrap {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 12px;
+  color: #111;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+tr.clickable:hover {
+  background: rgba(0,0,0,0.04);
+  cursor: pointer;
+}
+
+.status-critical {
+  background: #ffebee !important;
+  color: #b71c1c !important;
+  font-weight: 800;
+}
+
+.status-low {
+  background: #fff3e0 !important;
+  color: #ef6c00 !important;
+  font-weight: 800;
+}
+
+.status-medium {
+  background: #f3e5f5 !important;
+  color: #7b1fa2 !important;
+  font-weight: 800;
+}
+
