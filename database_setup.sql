@@ -125,6 +125,31 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
+-- Create contact_messages table
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create purchase_records table
+CREATE TABLE IF NOT EXISTS purchase_records (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    item_name VARCHAR(150) NOT NULL,
+    category VARCHAR(100),
+    quantity INT NOT NULL,
+    supplier_name VARCHAR(150),
+    purchase_date DATE,
+    price_per_unit DOUBLE NOT NULL,
+    total_price DOUBLE GENERATED ALWAYS AS (quantity * price_per_unit) STORED,
+    product_id VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- Display success message
 SELECT 'Database inventory_db created successfully with all tables!' AS Status;
 

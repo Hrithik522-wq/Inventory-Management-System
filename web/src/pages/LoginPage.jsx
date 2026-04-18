@@ -4,8 +4,8 @@ import { apiFetch } from '../api/client.js'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('HR@gmail')
-  const [password, setPassword] = useState('qwerty')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
 
   async function handleLogin() {
@@ -41,6 +41,7 @@ export default function LoginPage() {
             <label>Email</label>
             <input
               value={email}
+              autoComplete="off"
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             />
@@ -49,6 +50,7 @@ export default function LoginPage() {
             <input
               type="password"
               value={password}
+              autoComplete="new-password"
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
             />

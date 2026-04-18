@@ -15,11 +15,13 @@ function cors_headers(): void
     header('Access-Control-Allow-Headers: Content-Type');
 }
 
-function json_response(array $data, int $status = 200): void
+function json_response(array $data, int $status = 200, bool $terminate = true): void
 {
     header('Content-Type: application/json; charset=utf-8', true, $status);
     echo json_encode($data, JSON_UNESCAPED_SLASHES);
-    exit;
+    if ($terminate) {
+        exit;
+    }
 }
 
 function read_json_body(): ?array

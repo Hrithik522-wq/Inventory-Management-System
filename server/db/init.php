@@ -33,10 +33,37 @@ function db_init_if_needed(): void
             $hasDefaultUser = false;
         }
 
+        // Ensure new tables exist even if previously initialized
+        try {
+            $pdo = db_pdo(true);
+            $pdo->exec("
+CREATE TABLE IF NOT EXISTS purchase_records (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    item_name VARCHAR(150) NOT NULL,
+    category VARCHAR(100),
+    quantity INT NOT NULL,
+    supplier_name VARCHAR(150),
+    purchase_date DATE,
+    price_per_unit DOUBLE NOT NULL,
+    total_price DOUBLE GENERATED ALWAYS AS (quantity * price_per_unit) STORED,
+    product_id VARCHAR(36),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+            ");
+        } catch (Throwable $e) {}
+
         if ($hasDefaultUser) {
             return;
         }
-        // Fall through to seed the default user.
     }
 
     // Use PDO only (avoid mysqli extension requirement).

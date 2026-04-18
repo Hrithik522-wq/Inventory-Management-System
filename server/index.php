@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/response.php';
+require_once __DIR__ . '/logger.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/db/init.php';
+require_once __DIR__ . '/mail_helper.php';
 
 cors_headers();
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -80,9 +82,40 @@ function row_to_supplier(array $row): array
     ];
 }
 
+/**
+ * System-wide check for low stock items. Sends an email to the administrator
+ * if any items are currently below their threshold.
+ */
+function checkAndNotifyLowStock() {
+    debug_log("Checking for low stock items...");
+    $pdo = db_pdo(true);
+    $stmt = $pdo->query('SELECT * FROM products WHERE quantity <= low_stock_threshold AND alert_enabled = 1');
+    $rows = $stmt->fetchAll();
+    
+    if (count($rows) > 0) {
+        debug_log("Found " . count($rows) . " item(s) running low. Triggering email...");
+        $items = array_map(function($row) {
+            return [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'quantity' => $row['quantity'],
+                'threshold' => $row['low_stock_threshold']
+            ];
+        }, $rows);
+        
+        $config = require __DIR__ . '/mail_config.php';
+        $success = sendLowStockEmail($config['receiver_email'], $items);
+        if ($success) {
+            debug_log("Email successfully handed over to server for delivery.");
+        } else {
+            debug_log("WARNING: Server failed to accept the email. Check your SMTP settings in php.ini.");
+        }
+    } else {
+        debug_log("Inventory check complete: All items are healthy.");
+    }
+}
+
 try {
-    // Initialize DB schema on first start (idempotent).
-    // Keep this inside try so DB/bootstrap failures return JSON, not fatal HTML.
     db_init_if_needed();
 
     // Handle CORS preflight (OPTIONS) for ALL routes.
@@ -95,8 +128,12 @@ try {
         json_response(['ok' => true, 'service' => 'stockxpert-api']);
     }
 
+    if ($path === '/test_mail_system.php' && $method === 'GET') {
+        require_once __DIR__ . '/test_mail_system.php';
+        exit;
+    }
+
     if ($path === '/api/logout' && $method === 'POST') {
-        // Simple session logout for both regular user + admin.
         $_SESSION = [];
         if (session_id() !== '') {
             session_destroy();
@@ -124,7 +161,13 @@ try {
         }
 
         $_SESSION['user_id'] = (int)$row['id'];
-        json_response(['ok' => true, 'userId' => (int)$row['id'], 'name' => (string)$row['name']]);
+        json_response(['ok' => true, 'userId' => (int)$row['id'], 'name' => (string)$row['name']], 200, false);
+        
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        checkAndNotifyLowStock();
+        exit;
     }
 
     if ($path === '/api/signup' && $method === 'POST') {
@@ -165,17 +208,54 @@ try {
         $adminUser = $cfg['admin']['username'];
         $adminPass = $cfg['admin']['password'];
 
-        // Keep legacy behavior exactly (hardcoded credentials).
         if ($username === $adminUser && $password === $adminPass) {
             $_SESSION['admin'] = true;
-            json_response(['ok' => true, 'admin' => true]);
+            json_response(['ok' => true, 'admin' => true], 200, false);
+            
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request();
+            }
+            checkAndNotifyLowStock();
+            exit;
         }
-        json_response(['error' => 'Invalid admin credentials'], 401);
+    }
+
+    if (preg_match('#^/api/admin/messages/(\d+)$#', $path, $m) === 1 && $method === 'DELETE') {
+        require_admin();
+        $id = (int)$m[1];
+        $pdo = db_pdo(true);
+        $stmt = $pdo->prepare('DELETE FROM contact_messages WHERE id = ?');
+        $stmt->execute([$id]);
+        json_response(['ok' => true]);
+    }
+
+    if ($path === '/api/admin/messages' && $method === 'GET') {
+        require_admin();
+        $pdo = db_pdo(true);
+        $stmt = $pdo->query('SELECT * FROM contact_messages ORDER BY submitted_at DESC');
+        $rows = $stmt->fetchAll();
+        json_response(['ok' => true, 'messages' => $rows]);
+    }
+
+    if ($path === '/api/admin/purchases' && $method === 'GET') {
+        require_admin();
+        $pdo = db_pdo(true);
+        $stmt = $pdo->query('SELECT * FROM purchase_records ORDER BY purchase_date DESC, id DESC');
+        $rows = $stmt->fetchAll();
+        json_response(['ok' => true, 'purchases' => $rows]);
+    }
+
+    if ($path === '/api/admin/low-stock' && $method === 'GET') {
+        require_admin();
+        $pdo = db_pdo(true);
+        $stmt = $pdo->query('SELECT * FROM products WHERE quantity <= low_stock_threshold AND alert_enabled = 1');
+        $rows = $stmt->fetchAll();
+        json_response(['ok' => true, 'products' => array_map('row_to_product', $rows)]);
     }
 
     // --- Categories ---
     if ($path === '/api/categories' && $method === 'GET') {
-        require_login(); // allow only logged-in users (mirrors app-level flow)
+        require_login(); 
         $pdo = db_pdo(true);
         $rows = $pdo->query('SELECT * FROM categories')->fetchAll();
         json_response(['ok' => true, 'categories' => array_map('row_to_category', $rows)]);
@@ -274,6 +354,7 @@ try {
             $alertEnabled ? 1 : 0,
         ]);
 
+        checkAndNotifyLowStock();
         json_response(['ok' => true]);
     }
 
@@ -290,7 +371,6 @@ try {
         $stmt = $pdo->prepare('UPDATE products SET quantity = ? WHERE id = ? AND user_id = ?');
         $stmt->execute([$newQuantity, $productId, $userId]);
 
-        // Return updated product like the Java controller re-fetch does.
         $stmt = $pdo->prepare('SELECT * FROM products WHERE id = ? AND user_id = ? LIMIT 1');
         $stmt->execute([$productId, $userId]);
         $row = $stmt->fetch();
@@ -298,6 +378,7 @@ try {
             json_response(['error' => 'Product not found'], 404);
         }
 
+        checkAndNotifyLowStock();
         json_response(['ok' => true, 'product' => row_to_product($row)]);
     }
 
@@ -332,6 +413,101 @@ try {
         $stmt->execute([$userId]);
         $rows = $stmt->fetchAll();
         json_response(['ok' => true, 'products' => array_map('row_to_product', $rows)]);
+    }
+
+    // --- Purchase Records ---
+    if ($path === '/api/purchases' && $method === 'GET') {
+        $userId = require_login();
+        $pdo = db_pdo(true);
+        $stmt = $pdo->prepare('SELECT * FROM purchase_records WHERE user_id = ? ORDER BY purchase_date DESC, id DESC');
+        $stmt->execute([$userId]);
+        $rows = $stmt->fetchAll();
+        json_response(['ok' => true, 'purchases' => $rows]);
+    }
+
+    if ($path === '/api/purchases' && $method === 'POST') {
+        $userId = require_login();
+        $body = require_json_body();
+        $itemName = isset($body['item_name']) ? trim((string)$body['item_name']) : '';
+        $category = isset($body['category']) ? trim((string)$body['category']) : '';
+        $quantity = isset($body['quantity']) ? (int)$body['quantity'] : 0;
+        $supplierName = isset($body['supplier_name']) ? trim((string)$body['supplier_name']) : '';
+        $purchaseDate = isset($body['purchase_date']) ? trim((string)$body['purchase_date']) : '';
+        $pricePerUnit = isset($body['price_per_unit']) ? (float)$body['price_per_unit'] : 0.0;
+        $productId = isset($body['product_id']) ? trim((string)$body['product_id']) : null;
+        
+        if ($productId === '') $productId = null;
+        if ($itemName === '') {
+            json_response(['error' => 'Item name is required'], 400);
+        }
+        if ($purchaseDate === '') {
+             $purchaseDate = date('Y-m-d');
+        }
+
+        $pdo = db_pdo(true);
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare('INSERT INTO purchase_records (user_id, item_name, category, quantity, supplier_name, purchase_date, price_per_unit, product_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$userId, $itemName, $category, $quantity, $supplierName, $purchaseDate, $pricePerUnit, $productId]);
+            
+            if ($productId) {
+                 $stmtStock = $pdo->prepare('UPDATE products SET quantity = quantity + ? WHERE id = ? AND user_id = ?');
+                 $stmtStock->execute([$quantity, $productId, $userId]);
+            } else {
+                 $stmtStock = $pdo->prepare('UPDATE products SET quantity = quantity + ? WHERE name = ? AND user_id = ?');
+                 $stmtStock->execute([$quantity, $itemName, $userId]);
+            }
+
+            $pdo->commit();
+            checkAndNotifyLowStock();
+            json_response(['ok' => true]);
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            json_response(['error' => 'Failed to add purchase', 'detail' => $e->getMessage()], 500);
+        }
+    }
+
+    if (preg_match('#^/api/purchases/(\d+)$#', $path, $m) === 1 && $method === 'PUT') {
+        $userId = require_login();
+        $id = (int)$m[1];
+        $body = require_json_body();
+        $itemName = isset($body['item_name']) ? trim((string)$body['item_name']) : '';
+        $category = isset($body['category']) ? trim((string)$body['category']) : '';
+        $quantity = isset($body['quantity']) ? (int)$body['quantity'] : 0;
+        $supplierName = isset($body['supplier_name']) ? trim((string)$body['supplier_name']) : '';
+        $purchaseDate = isset($body['purchase_date']) ? trim((string)$body['purchase_date']) : '';
+        $pricePerUnit = isset($body['price_per_unit']) ? (float)$body['price_per_unit'] : 0.0;
+        
+        $pdo = db_pdo(true);
+        $stmt = $pdo->prepare('UPDATE purchase_records SET item_name=?, category=?, quantity=?, supplier_name=?, purchase_date=?, price_per_unit=? WHERE id=? AND user_id=?');
+        $stmt->execute([$itemName, $category, $quantity, $supplierName, $purchaseDate, $pricePerUnit, $id, $userId]);
+        json_response(['ok' => true]);
+    }
+
+    if (preg_match('#^/api/purchases/(\d+)$#', $path, $m) === 1 && $method === 'DELETE') {
+        $userId = require_login();
+        $id = (int)$m[1];
+        $pdo = db_pdo(true);
+        $stmt = $pdo->prepare('DELETE FROM purchase_records WHERE id=? AND user_id=?');
+        $stmt->execute([$id, $userId]);
+        json_response(['ok' => true]);
+    }
+
+    // --- Contact Messages ---
+    if ($path === '/api/contact' && $method === 'POST') {
+        $body = require_json_body();
+        $name = isset($body['name']) ? trim((string)$body['name']) : '';
+        $email = isset($body['email']) ? trim((string)$body['email']) : '';
+        $message = isset($body['message']) ? trim((string)$body['message']) : '';
+
+        if ($name === '' || $email === '' || $message === '') {
+            json_response(['error' => 'All fields are required'], 400);
+        }
+
+        $pdo = db_pdo(true);
+        $stmt = $pdo->prepare('INSERT INTO contact_messages (name, email, message) VALUES (?, ?, ?)');
+        $stmt->execute([$name, $email, $message]);
+        json_response(['ok' => true]);
     }
 
     // --- Products (admin) ---

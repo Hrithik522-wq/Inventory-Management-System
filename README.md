@@ -1,40 +1,90 @@
-# Inventory-Management-System (Web)
+# StockXpert 🚀
+### Modern Inventory Management with AI-Driven Analytics
 
-This repo contains a full-stack web version of the Inventory Management System:
-- **Frontend:** React + Vite (under `web/`)
-- **Backend:** PHP JSON API + MySQL (under `server/`)
+StockXpert is a robust, full-stack inventory management system designed to empower businesses with real-time tracking, intelligent stock predictions, and a high-performance administration dashboard. Successfully migrated from a legacy JavaFX architecture to a modern web platform.
 
-The legacy JavaFX code was moved into `legacy-java/`.
+---
 
-## Default login
-- Regular user: `HR@gmail` / `qwerty`
-- Admin login: `admin123` / `admin@123`
+## ✨ Key Features
 
-## Requirements
-- MySQL server
-- PHP (for the built-in web server)
-- Node.js + npm (for the React/Vite frontend)
+### 📦 Smart Inventory Management
+*   **Complete Lifecycle Tracking**: full CRUD operations for products, categories, and suppliers.
+*   **Purchase Records**: Seamlessly track incoming stock and historical transaction data.
+*   **Status Indicators**: Visual color-coded alerts for **GOOD**, **LOW**, and **CRITICAL** stock levels.
 
-## Configure MySQL
-Update `server/config.php` or set env vars:
-- `DB_HOST` (default `127.0.0.1`)
-- `DB_PORT` (default `3306`)
-- `DB_NAME` (default `inventory_db`)
-- `DB_USER` (default `root`)
-- `DB_PASSWORD` (default `12345678`)
+### 🧠 AI-Driven Insights
+*   **Predictive Analytics**: Uses moving average algorithms on historical data to estimate monthly demand trends.
+*   **Auto-Reorder Suggestions**: Automatically calculates suggested quantities needed for restocking before exhaustion.
 
-## Start the backend (PHP)
-From the repo root:
-```sh
-php -S localhost:8000 -t server index.php
-```
-On first start, the backend auto-creates the schema using `database_setup.sql` and inserts the default HR user.
+### 📊 Professional Dashboards
+*   **Interactive Visualizations**: Real-time charts powered by **Chart.js**.
+*   **Trend Tracking**: Analyze most/least purchased items and category distribution.
+*   **Transaction Timelines**: Monthly purchase history at a glance.
 
-## Start the frontend (React/Vite)
-```sh
-cd web
-npm install
-npm run dev
-```
+### 🔒 Enterprise Oversight
+*   **Multi-Tier Authentication**: Dedicated portals for regular users and administrative staff.
+*   **Global Monitoring**: Admin dashboard for system-wide health checks and customer inquiry management.
+*   **Email Alerts**: Automated SMTP notifications for low-stock events.
 
-Vite is configured to proxy `/api` requests to `http://localhost:8000`.
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React.js, Vite, Chart.js, Custom CSS (Aesthetics focused) |
+| **Backend** | PHP (RESTful JSON API) |
+| **Database** | MySQL |
+| **Architecture** | Decoupled Client-Server (REST) |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+*   **PHP** (Built-in server or Apache/Nginx)
+*   **MySQL Server**
+*   **Node.js & npm** (For React development)
+
+### 1. Database Setup
+1.  Run the `database_setup.sql` script on your MySQL server to create the schema.
+2.  Configure your database credentials in `server/config.php`.
+
+### 2. Backend Configuration
+1.  Navigate to the `server/` directory.
+2.  Update `mail_config.php` with your SMTP details to enable email alerts.
+3.  Start the PHP server:
+    ```sh
+    php -S localhost:8000 -t server index.php
+    ```
+
+### 3. Frontend Setup
+1.  Navigate to the `web/` directory.
+2.  Install dependencies:
+    ```sh
+    npm install
+    ```
+3.  Start the development server:
+    ```sh
+    npm run dev
+    ```
+
+---
+
+## 🔐 Default Access
+
+*   **User Login**: `HR@gmail` / `qwerty`
+*   **Admin Dashboard**: `admin123` / `admin@123`
+
+---
+
+## 📁 Project Structure
+
+*   `web/`: Modern React/Vite frontend source.
+*   `server/`: PHP JSON API, database management, and mail utilities.
+*   `database_setup.sql`: SQL scripts for rapid deployment.
+*   `legacy-java/`: Historical JavaFX source code (archived).
+
+---
+
+Developed with ❤️ for efficient business operations.

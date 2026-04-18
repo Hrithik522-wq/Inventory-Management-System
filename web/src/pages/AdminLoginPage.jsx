@@ -4,8 +4,8 @@ import { apiFetch } from '../api/client.js'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
-  const [username, setUsername] = useState('admin123')
-  const [password, setPassword] = useState('admin@123')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
 
   async function handleAdminLogin() {
@@ -32,10 +32,10 @@ export default function AdminLoginPage() {
           <h2 style={{ margin: 0 }}>Admin Login</h2>
           <div style={{ width: 360, background: 'rgba(255,255,255,0.10)', borderRadius: 18, padding: 16 }}>
             <label>Username</label>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} />
+            <input value={username} autoComplete="off" onChange={(e) => setUsername(e.target.value)} />
             <div style={{ height: 10 }} />
             <label>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input type="password" value={password} autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} />
           </div>
 
           {message ? (

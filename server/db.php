@@ -34,7 +34,7 @@ function db_pdo(bool $withDatabase = true): PDO
     try {
         return new PDO($dsn, $user, $password, $options);
     } catch (PDOException $firstError) {
-        // Common local setup fallback (e.g., XAMPP): root user with empty password.
+        // Local compatibility fallback for common root-without-password setups.
         if ($user === 'root' && $password === '12345678') {
             return new PDO($dsn, $user, '', $options);
         }

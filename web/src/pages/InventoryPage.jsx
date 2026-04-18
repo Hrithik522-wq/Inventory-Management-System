@@ -31,10 +31,9 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState([])
   const [suppliers, setSuppliers] = useState([])
 
-  const [view, setView] = useState('all') // all | lowStock | search
+  const [view, setView] = useState('all') // all | lowStock | fullStock | search
   const [searchId, setSearchId] = useState('')
 
-  // Form fields (mirrors InventoryController)
   const [id, setId] = useState('')
   const [name, setName] = useState('')
   const [price, setPrice] = useState('0')
@@ -45,6 +44,8 @@ export default function InventoryPage() {
   const [supplierId, setSupplierId] = useState(null)
 
   const [selectedProduct, setSelectedProduct] = useState(null)
+  const [showStockModal, setShowStockModal] = useState(false)
+  const [modalItems, setModalItems] = useState([])
 
   const didShowAlerts = useRef(false)
   const categoryMap = useMemo(() => {
@@ -60,6 +61,10 @@ export default function InventoryPage() {
 
   const tableProducts = useMemo(() => {
     if (view === 'lowStock') return lowStockProducts
+    if (view === 'fullStock') {
+        const lowIds = new Set(lowStockProducts.map(p => p.id))
+        return products.filter(p => !lowIds.has(p.id))
+    }
     return products
   }, [view, lowStockProducts, products])
 
@@ -111,9 +116,11 @@ export default function InventoryPage() {
 
   function showLowStockAlerts(list) {
     if (didShowAlerts.current) return
-    didShowAlerts.current = true
-    for (const p of list) {
-      if (p.alertEnabled) showLowStockAlert(p)
+    const itemsToAlert = list.filter(p => !!p.alertEnabled)
+    if (itemsToAlert.length > 0) {
+      setModalItems(itemsToAlert)
+      setShowStockModal(true)
+      didShowAlerts.current = true
     }
   }
 
@@ -128,7 +135,6 @@ export default function InventoryPage() {
   }
 
   useEffect(() => {
-    // On initial load, mirror JavaFX behavior: check and show low stock alerts.
     refreshAllAndOptionallyAlerts({ showAlerts: true }).catch((e) => {
       setMessage(e.message)
     })
@@ -331,6 +337,13 @@ export default function InventoryPage() {
     setMessage(`Showing ${lowStockProducts.length} low stock item(s)`)
   }
 
+  async function handleViewFullStock() {
+    const lowIds = new Set(lowStockProducts.map(p => p.id))
+    const fullCount = products.filter(p => !lowIds.has(p.id)).length
+    setView('fullStock')
+    setMessage(`Showing ${fullCount} full stock item(s)`)
+  }
+
   async function handleLogout() {
     await apiFetch('/api/logout', { method: 'POST' })
     window.location.href = '/'
@@ -362,9 +375,14 @@ export default function InventoryPage() {
                 <button onClick={handleShowAll} className="secondary" style={{ visibility: view === 'all' ? 'hidden' : 'visible' }}>
                   Back
                 </button>
-                <button onClick={handleViewLowStock} className="warn">
-                  View Low Stock Items
-                </button>
+                <div className="row" style={{ gap: 10 }}>
+                  <button onClick={handleViewFullStock} className="success">
+                    View Full Stock Items
+                  </button>
+                  <button onClick={handleViewLowStock} className="warn">
+                    View Low Stock Items
+                  </button>
+                </div>
               </div>
 
               <div className="card" style={{ padding: 16, background: 'rgba(255,255,255,0.12)' }}>
@@ -527,6 +545,34 @@ export default function InventoryPage() {
           </div>
         </div>
       </div>
+
+      {showStockModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <button className="modal-close" onClick={() => setShowStockModal(false)}>&times;</button>
+            <h2 style={{ marginTop: 0, color: 'var(--danger)' }}>⚠️ Low Stock Alert</h2>
+            <p className="muted"> The following items have reached their low stock threshold:</p>
+            
+            <ul className="alert-list">
+              {modalItems.map(item => (
+                <li key={item.id} className="alert-item">
+                  <div className="alert-item-info">
+                    <span className="alert-item-name">{item.name}</span>
+                    <span className="alert-item-qty">Current: {item.quantity} | Threshold: {item.lowStockThreshold}</span>
+                  </div>
+                  <button className="warn" style={{ padding: '6px 14px', fontSize: '0.8em' }} onClick={() => { setShowStockModal(false); setFieldsFromProduct(item); }}>
+                    Restock
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <div style={{ textAlign: 'right', marginTop: 20 }}>
+              <button className="secondary" onClick={() => setShowStockModal(false)}>Acknowledge</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
