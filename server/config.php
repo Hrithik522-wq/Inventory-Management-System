@@ -8,7 +8,7 @@ return [
         'port' => getenv('DB_PORT') ?: '3306',
         'name' => getenv('DB_NAME') ?: 'inventory_db',
         'user' => getenv('DB_USER') ?: 'root',
-        'password' => getenv('DB_PASSWORD') ?: '@Hrithik2323',
+        'password' => getenv('DB_PASSWORD') ?: 'Mbemine86@',
     ],
     'session' => [
         // Keep sessions compatible with browser fetch.
